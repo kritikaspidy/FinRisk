@@ -1,7 +1,8 @@
 # main.py
+import os
 
-from dotenv import load_dotenv
-load_dotenv()  # must be first — loads .env before anything reads os.environ
+# from dotenv import load_dotenv
+# load_dotenv()  # must be first — loads .env before anything reads os.environ
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
