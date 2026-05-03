@@ -17,11 +17,7 @@ __pycache__/
 # OS files
 .DS_Store
 
-# ======================
-# Model files (optional)
-# ======================
-model/
-*.pkl
+
 
 # ======================
 # Node / Frontend
