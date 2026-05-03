@@ -1,0 +1,40 @@
+# ======================
+# Python / Backend
+# ======================
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+.env
+.env.*
+*.sqlite3
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+
+# ======================
+# Model files (optional)
+# ======================
+model/
+*.pkl
+
+# ======================
+# Node / Frontend
+# ======================
+node_modules/
+dist/
+build/
+
+# Vite / React
+.vite/
+
+# ======================
+# IDE
+# ======================
+.vscode/
+.idea/
