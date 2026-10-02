@@ -1,188 +1,72 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { getAllApplications, overrideDecision } from '../services/api'
-import { Card, Badge, Btn, Alert } from '../components/UI'
+import { Btn, Alert, Pill, decColor, pct, inr } from '../components/UI'
 
-const riskVariant = r => ({ Low: 'low', Medium: 'medium', High: 'high' })[r] || 'neutral'
-const decVariant  = d => ({ Approve: 'approve', Review: 'review', Reject: 'reject' })[d] || 'neutral'
-
-function StatCard({ label, value, color }) {
-  return (
-    <div style={{ background: 'var(--card2)', border: '1px solid var(--border)',
-      borderRadius: 12, padding: '16px 20px' }}>
-      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 28, fontWeight: 600,
-        color: color || '#e2e8f0' }}>{value}</div>
-      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4,
-        textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
-    </div>
-  )
-}
+const dotColor = p => p < 0.1 ? '#9CC9FF' : p < 0.3 ? '#F2F0EB' : p < 0.7 ? '#FF7A45' : '#FF5B1F'
 
 export default function Admin() {
-  const [apps,       setApps]       = useState([])
-  const [filtered,   setFiltered]   = useState([])
-  const [loading,    setLoading]    = useState(true)
-  const [error,      setError]      = useState('')
-  const [riskFilter, setRiskFilter] = useState('')
-  const [decFilter,  setDecFilter]  = useState('')
-  const [overriding, setOverriding] = useState(null)
-  const [msg,        setMsg]        = useState('')
+  const [apps, setApps] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [risk, setRisk] = useState('')
+  const [dec, setDec] = useState('')
+  const [busy, setBusy] = useState(null)
+  const [msg, setMsg] = useState('')
 
-  const load = () => {
-    setLoading(true)
-    getAllApplications()
-      .then(data => { setApps(data); setFiltered(data) })
-      .catch(() => setError('Failed to load applications.'))
-      .finally(() => setLoading(false))
+  const load = () => getAllApplications().then(setApps).catch(() => setError('Could not load applications. Refresh to try again.')).finally(() => setLoading(false))
+  useEffect(() => { load() }, [])
+
+  const sorted = useMemo(() => [...apps].sort((a, b) => a.probability_of_default - b.probability_of_default), [apps])
+  const rows = apps.filter(a => (!risk || a.risk === risk) && (!dec || a.decision === dec))
+  const flagged = apps.filter(a => a.decision !== 'Approve').length
+  const headline = !apps.length ? 'No applications yet.' : !flagged ? 'Nothing needs a second look.' : `1 in ${Math.round(apps.length / flagged)} applications needs a second look.`
+
+  const override = async (id, d) => {
+    setBusy(id)
+    try { await overrideDecision(id, d); setMsg(`APP-${id} is now ${d}.`); await load() }
+    catch { setMsg('Override failed. Try again.') }
+    finally { setBusy(null); setTimeout(() => setMsg(''), 4000) }
   }
-
-  useEffect(load, [])
-
-  useEffect(() => {
-    let result = apps
-    if (riskFilter) result = result.filter(a => a.risk === riskFilter)
-    if (decFilter)  result = result.filter(a => a.decision === decFilter)
-    setFiltered(result)
-  }, [riskFilter, decFilter, apps])
-
-  const handleOverride = async (id, decision) => {
-    setOverriding(id)
-    try {
-      await overrideDecision(id, decision)
-      setMsg(`Application #${id} decision updated to ${decision}`)
-      load()
-    } catch { setMsg('Override failed.') }
-    finally { setOverriding(null); setTimeout(() => setMsg(''), 4000) }
-  }
-
-  const total    = apps.length
-  const approved = apps.filter(a => a.decision === 'Approve').length
-  const rejected = apps.filter(a => a.decision === 'Reject').length
-  const highRisk = apps.filter(a => a.risk === 'High').length
-  const avgScore = total ? Math.round(apps.reduce((s, a) => s + a.credit_score, 0) / total) : 0
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 20px' }}>
-      <div style={{ marginBottom: 28 }} className="fade-up">
-        <div style={{ fontFamily: 'var(--font-serif)', fontSize: 28, color: '#e2e8f0', marginBottom: 6 }}>
-          Admin Dashboard
-        </div>
-        <div style={{ color: 'var(--muted)', fontSize: 13 }}>
-          All loan applications — filter, review, and override decisions
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 24 }}
-        className="fade-up">
-        <StatCard label="Total" value={total} />
-        <StatCard label="Approved" value={approved} color="var(--green)" />
-        <StatCard label="Rejected" value={rejected} color="var(--red)" />
-        <StatCard label="High Risk" value={highRisk} color="var(--amber)" />
-        <StatCard label="Avg Score" value={avgScore || '--'} color="var(--blue)" />
-      </div>
-
-      {msg && <div style={{ marginBottom: 16 }}><Alert type="success">{msg}</Alert></div>}
-      {error && <div style={{ marginBottom: 16 }}><Alert type="error">{error}</Alert></div>}
-
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-        <select value={riskFilter} onChange={e => setRiskFilter(e.target.value)}
-          style={{ width: 'auto', padding: '7px 12px' }}>
-          <option value="">All Risk Levels</option>
-          <option value="Low">Low</option>
-          <option value="Medium">Medium</option>
-          <option value="High">High</option>
-        </select>
-        <select value={decFilter} onChange={e => setDecFilter(e.target.value)}
-          style={{ width: 'auto', padding: '7px 12px' }}>
-          <option value="">All Decisions</option>
-          <option value="Approve">Approve</option>
-          <option value="Review">Review</option>
-          <option value="Reject">Reject</option>
-        </select>
-        <button onClick={() => { setRiskFilter(''); setDecFilter('') }}
-          style={{ background: 'transparent', border: '1px solid var(--border2)',
-            borderRadius: 8, padding: '7px 14px', fontSize: 12,
-            color: 'var(--muted)', cursor: 'pointer' }}>
-          Clear Filters
-        </button>
-        <span style={{ alignSelf: 'center', fontSize: 12, color: 'var(--muted)', marginLeft: 'auto' }}>
-          {filtered.length} of {total} applications
-        </span>
-      </div>
-
-      {/* Table */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 60 }}>
-          <span className="spinner" style={{ width: 28, height: 28 }} />
-        </div>
-      ) : filtered.length === 0 ? (
-        <Card style={{ textAlign: 'center', padding: 40 }}>
-          <div style={{ color: 'var(--muted)' }}>No applications match the current filters.</div>
-        </Card>
-      ) : (
-        <Card style={{ padding: 0, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['ID', 'Date', 'Income', 'Debt', 'Util%', 'DTI', 'Score', 'Risk', 'Decision', 'Override'].map(h => (
-                  <th key={h} style={{ padding: '12px 14px', textAlign: 'left',
-                    fontSize: 10, fontWeight: 600, color: 'var(--muted)',
-                    fontFamily: 'var(--font-mono)', letterSpacing: '0.06em',
-                    background: 'var(--card2)' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((app, i) => (
-                <tr key={app.id} style={{
-                  borderBottom: '1px solid var(--border)',
-                  background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)',
-                  transition: 'background 0.15s',
-                }}>
-                  <td style={{ padding: '11px 14px', fontFamily: 'var(--font-mono)',
-                    fontSize: 12, color: 'var(--muted)' }}>#{app.id}</td>
-                  <td style={{ padding: '11px 14px', fontSize: 12 }}>
-                    {new Date(app.created_at).toLocaleDateString('en-IN')}
-                  </td>
-                  <td style={{ padding: '11px 14px', fontSize: 12, fontFamily: 'var(--font-mono)' }}>
-                    ₹{app.income.toLocaleString('en-IN')}
-                  </td>
-                  <td style={{ padding: '11px 14px', fontSize: 12, fontFamily: 'var(--font-mono)' }}>
-                    ₹{app.debt.toLocaleString('en-IN')}
-                  </td>
-                  <td style={{ padding: '11px 14px', fontSize: 12, fontFamily: 'var(--font-mono)' }}>
-                    {app.credit_utilization}%
-                  </td>
-                  <td style={{ padding: '11px 14px', fontSize: 12, fontFamily: 'var(--font-mono)' }}>
-                    {(app.dti * 100).toFixed(1)}%
-                  </td>
-                  <td style={{ padding: '11px 14px', fontFamily: 'var(--font-mono)',
-                    fontSize: 13, fontWeight: 600 }}>{app.credit_score}</td>
-                  <td style={{ padding: '11px 14px' }}>
-                    <Badge variant={riskVariant(app.risk)}>{app.risk}</Badge>
-                  </td>
-                  <td style={{ padding: '11px 14px' }}>
-                    <Badge variant={decVariant(app.decision)}>{app.decision}</Badge>
-                  </td>
-                  <td style={{ padding: '11px 14px' }}>
-                    <div style={{ display: 'flex', gap: 5 }}>
-                      <Btn variant="ghost" onClick={() => handleOverride(app.id, 'Approve')}
-                        disabled={overriding === app.id}
-                        style={{ padding: '4px 8px', fontSize: 11, color: 'var(--green)',
-                          borderColor: 'rgba(110,231,183,0.2)' }}>✓</Btn>
-                      <Btn variant="ghost" onClick={() => handleOverride(app.id, 'Reject')}
-                        disabled={overriding === app.id}
-                        style={{ padding: '4px 8px', fontSize: 11, color: 'var(--red)',
-                          borderColor: 'rgba(248,113,113,0.2)' }}>✕</Btn>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+    <main className="page">
+      <section className="poster">
+        <h1>{loading ? 'Loading the book…' : headline}</h1>
+        {!!apps.length && <p style={{ fontSize: 20, maxWidth: '34em' }}>{flagged} of {apps.length} applications are under review or rejected. The darkest dots carry the highest risk.</p>}
+      </section>
+      {error && <Alert>{error}</Alert>}
+      {msg && <Alert ok>{msg}</Alert>}
+      {!!sorted.length && (
+        <section className="dots">
+          <svg viewBox={`0 0 1200 ${Math.ceil(Math.min(sorted.length, 800) / 40) * 30}`} width="100%" role="group" aria-label="Each dot is one application, from lowest to highest default risk">
+            {sorted.slice(0, 800).map((a, i) => (
+              <a key={a.id} href={`#app-${a.id}`} aria-label={`APP-${a.id}, ${a.decision}, ${pct(a.probability_of_default)}`}>
+                <circle cx={14 + (i % 40) * 30} cy={14 + Math.floor(i / 40) * 30} r="10" fill={dotColor(a.probability_of_default)} />
+              </a>
+            ))}
+          </svg>
+          <p style={{ margin: '12px 0 0', color: '#B9B6AE' }}>Each dot is one application, lowest risk first. Select a dot to jump to its row.</p>
+        </section>
       )}
-    </div>
+      <div className="filters">
+        <select aria-label="Filter by risk" value={risk} onChange={e => setRisk(e.target.value)}><option value="">All risk levels</option><option>Low</option><option>Medium</option><option>High</option></select>
+        <select aria-label="Filter by decision" value={dec} onChange={e => setDec(e.target.value)}><option value="">All decisions</option><option>Approve</option><option>Review</option><option>Reject</option></select>
+        {(risk || dec) && <Btn className="sm" onClick={() => { setRisk(''); setDec('') }}>Clear filters</Btn>}
+        <span className="mut" style={{ alignSelf: 'center', marginLeft: 'auto' }}>{rows.length} of {apps.length}</span>
+      </div>
+      {!loading && !rows.length && !!apps.length && <p className="mut">No applications match these filters. Clear them to see everything.</p>}
+      {rows.map(a => (
+        <article className="row" id={`app-${a.id}`} key={a.id}>
+          <div><b>APP-{a.id}</b><div className="mono mut" style={{ fontSize: 13 }}>{new Date(a.created_at).toLocaleDateString('en-IN')}</div></div>
+          <span className="stat" style={{ fontSize: 40, color: decColor(a.decision) }}>{pct(a.probability_of_default)}</span>
+          <span><Pill decision={a.decision} /><div className="mono mut" style={{ fontSize: 13 }}>score {a.credit_score}/100</div></span>
+          <span className="mono">{inr(a.income)} income<br />DTI {pct(a.dti)} · use {a.credit_utilization}%</span>
+          <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Btn className="sm" disabled={busy === a.id} onClick={() => override(a.id, 'Approve')}>Approve</Btn>
+            <Btn className="sm" disabled={busy === a.id} onClick={() => override(a.id, 'Reject')}>Reject</Btn>
+          </span>
+        </article>
+      ))}
+    </main>
   )
 }

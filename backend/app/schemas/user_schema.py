@@ -41,6 +41,7 @@ class ApplicationResponse(BaseModel):
     risk:                   Optional[str]
     decision:               Optional[str]
     reasons:                Optional[List[str]]
+    contributions:          Optional[List[dict]] = None
     created_at:             datetime
 
     class Config:

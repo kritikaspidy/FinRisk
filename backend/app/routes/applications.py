@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.orm_models import Application, User
-from app.models.ml_model import predict_risk
+from app.models.ml_model import predict_risk, explain_risk
 from app.schemas.user_schema import UserData, ApplicationResponse
 from app.services.riskcalculator import calculate_dti
 from app.services.decisionengine import evaluate_decision
@@ -48,6 +48,7 @@ def predict(
 
     # Attach decoded reasons list for the response
     app_record.reasons = result["reasons"]
+    app_record.contributions = explain_risk(user_data.dict())
     return app_record
 
 

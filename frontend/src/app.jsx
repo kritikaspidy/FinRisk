@@ -11,17 +11,15 @@ import Admin from './pages/Admin'
 export default function App() {
   return (
     <AuthProvider>
-      <div style={{ minHeight: '100vh', background: 'var(--ink)' }}>
-        <Navbar />
-        <Routes>
-          <Route path="/"        element={<Navigate to="/apply" replace />} />
-          <Route path="/login"   element={<Login />} />
-          <Route path="/signup"  element={<Signup />} />
-          <Route path="/apply"   element={<ProtectedRoute><Apply /></ProtectedRoute>} />
-          <Route path="/my-applications" element={<ProtectedRoute><MyApplications /></ProtectedRoute>} />
-          <Route path="/admin"   element={<AdminRoute><Admin /></AdminRoute>} />
-        </Routes>
-      </div>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Navigate to="/apply" replace />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/apply" element={<ProtectedRoute><Apply /></ProtectedRoute>} />
+        <Route path="/my-applications" element={<ProtectedRoute><MyApplications /></ProtectedRoute>} />
+        <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+      </Routes>
     </AuthProvider>
   )
 }
