@@ -55,7 +55,25 @@ export function Scale({ contributions }) {
   )
 }
 
+export function BandBar({ p }) {
+  const at = p == null ? null : Math.min(100, Math.max(0, p * 100))
+  return (
+    <div>
+      <div className="band" role="img" aria-label={at == null ? 'Approve below 30%, review 30 to 70%, reject above 70%' : `Default probability ${at.toFixed(1)}%`}>
+        <i style={{ width: '30%', background: 'var(--lo)' }} /><i style={{ width: '40%', background: 'var(--hi2)' }} /><i style={{ width: '30%', background: 'var(--hi)' }} />
+        {at != null && <b style={{ left: at + '%' }} />}
+      </div>
+      <div className="band-l"><span>Approve under 30%</span><span>Review 30–70%</span><span>Reject over 70%</span></div>
+    </div>
+  )
+}
+
+export function Footer() {
+  return <footer className="foot"><div><span>© FinRisk</span><span>Illustrative model trained on synthetic data. Not a lending decision or financial advice.</span></div></footer>
+}
+
 export function Verdict({ r }) {
+  const top = (r.contributions || []).filter(c => c.impact > 0.5)[0]
   const p = (r.probability_of_default * 100).toFixed(1).split('.')
   return (
     <div>
@@ -65,6 +83,8 @@ export function Verdict({ r }) {
           <div className="big" style={{ color: decColor(r.decision) }}>{p[0]}<small>.{p[1]}%</small></div>
           <p style={{ fontSize: 'clamp(24px,3vw,34px)', fontWeight: 800, lineHeight: 1.1, maxWidth: '15em' }}>{verdictLine(r)}</p>
           <Pill decision={r.decision} />{' '}<span className="mono mut">score {r.credit_score}/100 · DTI {pct(r.dti)}</span>
+          <div style={{ marginTop: 28, maxWidth: 520 }}><BandBar p={r.probability_of_default} /></div>
+          {r.contributions?.length > 0 && <p className="mut" style={{ maxWidth: 520 }}>{top ? `Biggest driver: ${top.label.toLowerCase()}, adding ${top.impact.toFixed(1)} points compared with a typical applicant.` : 'No single factor pushes this applicant above a typical risk level.'}</p>}
         </div>
         {r.contributions?.length > 0 && <div>
           <div className="mut">What tipped the scale, in percentage points</div>

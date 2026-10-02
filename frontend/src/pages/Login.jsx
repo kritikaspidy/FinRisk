@@ -15,7 +15,7 @@ export default function Login() {
 
   const submit = async e => {
     e.preventDefault(); setError(''); setLoading(true)
-    try { const d = await loginApi(form); login(d.access_token); navigate('/apply') }
+    try { const d = await loginApi(form); login(d.access_token); navigate('/home') }
     catch (err) { setError(err.response?.data?.detail || 'Login failed. Check your email and password.') }
     finally { setLoading(false) }
   }

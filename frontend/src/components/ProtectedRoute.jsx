@@ -9,6 +9,6 @@ export function ProtectedRoute({ children }) {
 export function AdminRoute({ children }) {
   const { token, isAdmin } = useAuth()
   if (!token)   return <Navigate to="/login" replace />
-  if (!isAdmin) return <Navigate to="/apply" replace />
+  if (!isAdmin) return <Navigate to="/home" replace />
   return children
 }
